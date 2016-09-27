@@ -28,9 +28,8 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
             redirectUri.contains("*") &&
             matcher.match(redirectUri, requestedRedirect)) {
             return true;
-        } else {
-            return super.redirectMatches(requestedRedirect, redirectUri);
         }
+        return redirectUri == null;
     }
 
 }

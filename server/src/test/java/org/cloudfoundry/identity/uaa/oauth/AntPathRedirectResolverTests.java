@@ -75,4 +75,21 @@ public class AntPathRedirectResolverTests {
         assertFalse(resolver.redirectMatches(requestedRedirectHttps, path));
         assertFalse(resolver.redirectMatches(requestedRedirectHttp, path));
     }
+
+    @Test
+    public void ensureSubdmainDoesNotMatch_ifWildcardNotPresent() throws Exception {
+        String path = "http://domain.com/path1/path2";
+        assertFalse(resolver.redirectMatches("http://subdomain.domain.com/path1/path2", path));
+    }
+
+    @Test
+    public void mismatchingPorts_fails() throws Exception {
+        String path = "http://domain.com:8000/path1/path2";
+        assertFalse(resolver.redirectMatches("http://domain.com:8080/path1/path2", path));
+    }
+
+    @Test
+    public void registeredRedirectUriNull() throws Exception {
+        assertTrue(resolver.redirectMatches("http://subdomain.domain.com/path1/path2", null));
+    }
 }
