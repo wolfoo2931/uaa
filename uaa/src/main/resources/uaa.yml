@@ -5,7 +5,7 @@
 #spring_profiles: mysql,default,ldap
 #spring_profiles: postgresql,default
 #spring_profiles: ldap,default,hsqldb
-#spring_profiles: saml
+#spring_profiles: saml,default,hsqldb
 #spring_profiles: keystone,default,hsqldb
 
 #database:

@@ -1,19 +1,26 @@
 package org.cloudfoundry.identity.uaa.authentication.listener;
 
 import org.cloudfoundry.identity.uaa.authentication.event.UserAuthenticationSuccessEvent;
+import org.cloudfoundry.identity.uaa.login.SavedAccountOption;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.scim.ScimUserProvisioning;
+import org.cloudfoundry.identity.uaa.security.LoginReferenceSavingFilter;
 import org.cloudfoundry.identity.uaa.test.MockAuthentication;
 import org.cloudfoundry.identity.uaa.user.UaaUser;
 import org.cloudfoundry.identity.uaa.user.UaaUserPrototype;
+import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.verification.VerificationMode;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
-import static org.junit.Assert.assertTrue;
+import javax.servlet.http.Cookie;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -53,6 +60,36 @@ public class UserAuthenticationSuccessListenerTests {
         ScimUser scimUser = new ScimUser(user.getId(), user.getUsername(), user.getGivenName(), user.getFamilyName());
         scimUser.setVerified(user.isVerified());
         return scimUser;
+    }
+
+    @Test
+    public void listenerAddsSavedAccountCookieToResponse() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setContextPath("/uaa-context-path");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        new LoginReferenceSavingFilter().doFilter(request, response, chain);
+
+        String id = "user-id";
+        UserAuthenticationSuccessEvent event = getEvent(new UaaUserPrototype()
+                .withId(id)
+                .withUsername("testUser")
+                .withEmail("test@email.com")
+                .withVerified(false));
+        when(scimUserProvisioning.retrieve(id)).thenReturn(getScimUser(event.getUser()));
+
+        listener.onApplicationEvent(event);
+
+        Cookie cookie = response.getCookie("Saved-Account-user-id");
+        assertNotNull(cookie);
+        SavedAccountOption savedAccountOption = JsonUtils.readValue(cookie.getValue(), SavedAccountOption.class);
+        assertEquals(savedAccountOption.getEmail(), event.getUser().getEmail());
+        assertEquals(savedAccountOption.getOrigin(), event.getUser().getOrigin());
+        assertEquals(savedAccountOption.getUserId(), event.getUser().getId());
+        assertEquals(savedAccountOption.getUsername(), event.getUser().getUsername());
+        assertEquals(cookie.getPath(), "/uaa-context-path/login");
+        assertEquals(cookie.getMaxAge(), 365*24*60*60);
     }
 
     @Test

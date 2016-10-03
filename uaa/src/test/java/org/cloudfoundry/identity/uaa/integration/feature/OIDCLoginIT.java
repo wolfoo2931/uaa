@@ -47,10 +47,12 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.getZoneAdminToken;
 import static org.cloudfoundry.identity.uaa.provider.ExternalIdentityProviderDefinition.USER_NAME_ATTRIBUTE_NAME;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
@@ -111,6 +113,12 @@ public class OIDCLoginIT {
 
         Assert.assertThat(webDriver.getCurrentUrl(), Matchers.containsString("localhost"));
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
+
+        webDriver.findElement(By.cssSelector(".dropdown-trigger")).click();
+        webDriver.findElement(By.linkText("Sign Out")).click();
+        List<String> cookies = webDriver.manage().getCookies().stream().map(c -> c.getName()).collect(Collectors.toList());
+        assertThat(cookies.size(), Matchers.equalTo(3));
+        assertThat(cookies, Matchers.hasItem(startsWith("Saved-Account-")));
     }
 
     @Test

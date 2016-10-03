@@ -189,9 +189,6 @@
                     <constructor-arg value="/" />
                 </bean>
                 <bean class="org.springframework.security.web.util.matcher.AntPathRequestMatcher">
-                    <constructor-arg value="/oauth/**" />
-                </bean>
-                <bean class="org.springframework.security.web.util.matcher.AntPathRequestMatcher">
                     <constructor-arg value="/login**" />
                 </bean>
                 <bean class="org.springframework.security.web.util.matcher.AntPathRequestMatcher">
@@ -199,6 +196,16 @@
                 </bean>
                 <bean class="org.springframework.security.web.util.matcher.AntPathRequestMatcher">
                     <constructor-arg value="/logout.do**" />
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="oauthRequestMatcher" class="org.springframework.security.web.util.matcher.OrRequestMatcher">
+        <constructor-arg>
+            <list>
+                <bean class="org.springframework.security.web.util.matcher.AntPathRequestMatcher">
+                    <constructor-arg value="/oauth/**" />
                 </bean>
                 <bean class="org.springframework.security.web.util.matcher.AntPathRequestMatcher">
                     <constructor-arg value="/profile" />
@@ -212,8 +219,6 @@
     <bean id="loginCookieCsrfRepository" class="org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository">
         <property name="secure" value="${require_https:false}" />
     </bean>
-
-    <bean id="accountSavingAuthenticationSuccessHandler" class="org.cloudfoundry.identity.uaa.login.AccountSavingAuthenticationSuccessHandler" />
 
     <bean id="logoutFilter" class="org.springframework.security.web.authentication.logout.LogoutFilter">
         <constructor-arg index="0" ref="logoutHandler"/>
@@ -235,6 +240,7 @@
     <bean id="savedRequestCache" class="org.springframework.security.web.savedrequest.HttpSessionRequestCache">
         <property name="requestMatcher" ref="uiAuthorizeRequestMatcher"/>
     </bean>
+
     <http name="uiSecurity" request-matcher-ref="uiRequestMatcher" use-expressions="false"
           authentication-manager-ref="zoneAwareAuthzAuthenticationManager" xmlns="http://www.springframework.org/schema/security">
       <intercept-url pattern="/login**" access="IS_AUTHENTICATED_ANONYMOUSLY" />
@@ -244,16 +250,38 @@
                   username-parameter="username"
                   password-parameter="password"
                   login-processing-url="/login.do"
-                  authentication-success-handler-ref="accountSavingAuthenticationSuccessHandler"
+                  authentication-success-handler-ref="successRedirectHandler"
                   authentication-failure-handler-ref="loginAuthenticationFailureHandler"
                   authentication-details-source-ref="authenticationDetailsSource"
                   default-target-url="/"/>
       <!--<logout logout-url="/logout.do" success-handler-ref="logoutHandler" invalidate-session="true"/>-->
       <custom-filter ref="logoutFilter" after="LOGOUT_FILTER"/>
       <custom-filter ref="samlLogoutFilter" before="LOGOUT_FILTER"/>
+      <custom-filter ref="loginReferenceSavingFilter" before="PRE_AUTH_FILTER" />
       <csrf disabled="false"  token-repository-ref="loginCookieCsrfRepository" request-matcher-ref="uiCookeCsrfRequestMatcher"/>
       <access-denied-handler error-page="/login?error=invalid_login_request"/>
       <request-cache ref="savedRequestCache"/>
+    </http>
+
+    <http name="oauthSecurity" request-matcher-ref="oauthRequestMatcher" use-expressions="false"
+          authentication-manager-ref="zoneAwareAuthzAuthenticationManager" xmlns="http://www.springframework.org/schema/security">
+        <intercept-url pattern="/login**" access="IS_AUTHENTICATED_ANONYMOUSLY" />
+        <intercept-url pattern="/login/idp_discovery" access="IS_AUTHENTICATED_ANONYMOUSLY" />
+        <intercept-url pattern="/**" access="IS_AUTHENTICATED_FULLY" />
+        <form-login login-page="/login"
+                    username-parameter="username"
+                    password-parameter="password"
+                    login-processing-url="/login.do"
+                    authentication-success-handler-ref="successRedirectHandler"
+                    authentication-failure-handler-ref="loginAuthenticationFailureHandler"
+                    authentication-details-source-ref="authenticationDetailsSource"
+                    default-target-url="/"/>
+        <!--<logout logout-url="/logout.do" success-handler-ref="logoutHandler" invalidate-session="true"/>-->
+        <custom-filter ref="logoutFilter" after="LOGOUT_FILTER"/>
+        <custom-filter ref="samlLogoutFilter" before="LOGOUT_FILTER"/>
+        <csrf disabled="false"  token-repository-ref="loginCookieCsrfRepository" request-matcher-ref="uiCookeCsrfRequestMatcher"/>
+        <access-denied-handler error-page="/login?error=invalid_login_request"/>
+        <request-cache ref="savedRequestCache"/>
     </http>
 
   <http name="deleteSavedAccountSecurity" pattern="/delete_saved_account**" create-session="stateless" entry-point-ref="basicAuthenticationEntryPoint"
@@ -330,6 +358,8 @@
     </security:http>
 
     <bean id="httpsHeaderFilter" class="org.cloudfoundry.identity.uaa.security.web.HttpsHeaderFilter" />
+
+    <bean id="loginReferenceSavingFilter" class="org.cloudfoundry.identity.uaa.security.LoginReferenceSavingFilter" />
 
     <!-- this bean will be overwritten in the saml profile -->
     <bean id="metadataGeneratorFilter" class="org.cloudfoundry.identity.uaa.web.NoOpFilter" />
