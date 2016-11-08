@@ -17,6 +17,7 @@ import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.authentication.AccountNotVerifiedException;
 import org.cloudfoundry.identity.uaa.authentication.AuthenticationPolicyRejectionException;
 import org.cloudfoundry.identity.uaa.authentication.PasswordExpiredException;
+import org.cloudfoundry.identity.uaa.authentication.PasswordForcedChangeException;
 import org.cloudfoundry.identity.uaa.authentication.UaaAuthentication;
 import org.cloudfoundry.identity.uaa.authentication.UaaAuthenticationDetails;
 import org.cloudfoundry.identity.uaa.authentication.UaaPrincipal;
@@ -113,6 +114,10 @@ public class AuthzAuthenticationManager implements AuthenticationManager, Applic
                     logger.debug("Account not verified: " + user.getId());
                     throw new AccountNotVerifiedException("Account not verified");
                 }
+                long passwordNewerThan = getPasswordNewerThan();
+                if(user.getPasswordLastModified().getTime() <= passwordNewerThan){
+                    throw new PasswordForcedChangeException("Your current password has expired");
+                }
 
                 int expiringPassword = getPasswordExpiresInMonths();
                 if (expiringPassword>0) {
@@ -153,6 +158,11 @@ public class AuthzAuthenticationManager implements AuthenticationManager, Applic
                 }
             }
         }
+        return result;
+    }
+
+    protected long getPasswordNewerThan() {
+        long result = 0;
         return result;
     }
 

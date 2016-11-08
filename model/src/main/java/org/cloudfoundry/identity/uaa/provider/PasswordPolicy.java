@@ -27,6 +27,9 @@ public class PasswordPolicy {
     private int requireSpecialCharacter;
     private int expirePasswordInMonths;
 
+
+    private int passwordNewerThan;
+
     public PasswordPolicy() {
         minLength = maxLength = requireUpperCaseCharacter = requireLowerCaseCharacter = requireDigit = requireSpecialCharacter = expirePasswordInMonths = -1;
     }
@@ -70,6 +73,14 @@ public class PasswordPolicy {
     public PasswordPolicy setMaxLength(int maxLength) {
         this.maxLength = maxLength;
         return this;
+    }
+
+    public int getPasswordNewerThan() {
+        return passwordNewerThan;
+    }
+
+    public void setPasswordNewerThan(int passwordNewerThan) {
+        this.passwordNewerThan = passwordNewerThan;
     }
 
     public PasswordPolicy setMinLength(int minLength) {

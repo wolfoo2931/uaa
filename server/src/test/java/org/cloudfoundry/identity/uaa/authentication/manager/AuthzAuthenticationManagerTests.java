@@ -16,6 +16,7 @@ import org.cloudfoundry.identity.uaa.authentication.AccountNotVerifiedException;
 import org.cloudfoundry.identity.uaa.authentication.AuthenticationPolicyRejectionException;
 import org.cloudfoundry.identity.uaa.authentication.AuthzAuthenticationRequest;
 import org.cloudfoundry.identity.uaa.authentication.PasswordExpiredException;
+import org.cloudfoundry.identity.uaa.authentication.PasswordForcedChangeException;
 import org.cloudfoundry.identity.uaa.authentication.UaaAuthentication;
 import org.cloudfoundry.identity.uaa.authentication.UaaAuthenticationDetails;
 import org.cloudfoundry.identity.uaa.authentication.UaaPrincipal;
@@ -100,7 +101,8 @@ public class AuthzAuthenticationManagerTests {
             .withOrigin(OriginKeys.UAA)
             .withZoneId(IdentityZoneHolder.get().getId())
             .withExternalId(id)
-            .withVerified(true);
+            .withVerified(true)
+            .withPasswordLastModified(new Date(System.currentTimeMillis()));
     }
 
     @Test
@@ -272,6 +274,37 @@ public class AuthzAuthenticationManagerTests {
 
         assertFalse(authentication.isAuthenticated());
         verify(publisher).publishEvent(isA(AuthenticationFailureLockedEvent.class));
+    }
+
+    @Test
+    public void testGetPasswordNewerThan() {
+        when(db.retrieveUserByName("auser", OriginKeys.UAA)).thenReturn(user);
+        Authentication result = mgr.authenticate(createAuthRequest("auser", "password"));
+        assertNotNull(result);
+    }
+
+    @Test (expected = PasswordForcedChangeException.class)
+    public void testGetPasswordNewerThanInvalid() {
+        String id = new RandomValueStringGenerator().generate();
+
+        UaaUser userWithExpiredPassword  = new UaaUser(
+            user.getId(),
+            user.getUsername(),
+            PASSWORD,
+            user.getPassword(),
+            user.getAuthorities(),
+            user.getGivenName(),
+            user.getFamilyName(),
+            new Date(),
+            new Date(),
+            OriginKeys.UAA,
+            null,
+            true,
+            IdentityZoneHolder.get().getId(),
+            user.getSalt(),
+            new Date(0));
+        when(db.retrieveUserByName("auser", OriginKeys.UAA)).thenReturn(userWithExpiredPassword);
+        mgr.authenticate(createAuthRequest("auser", "password"));
     }
 
     AuthzAuthenticationRequest createAuthRequest(String username, String password) {
