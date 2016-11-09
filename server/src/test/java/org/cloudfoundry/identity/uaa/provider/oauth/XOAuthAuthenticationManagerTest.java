@@ -25,6 +25,7 @@ import org.cloudfoundry.identity.uaa.oauth.TokenKeyEndpoint;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.CompositeAccessToken;
 import org.cloudfoundry.identity.uaa.oauth.token.VerificationKeyResponse;
+import org.cloudfoundry.identity.uaa.oauth.token.VerificationKeysListResponse;
 import org.cloudfoundry.identity.uaa.provider.AbstractXOAuthIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
@@ -66,6 +67,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.cloudfoundry.identity.uaa.provider.ExternalIdentityProviderDefinition.GROUP_ATTRIBUTE_NAME;
 import static org.cloudfoundry.identity.uaa.provider.ExternalIdentityProviderDefinition.USER_NAME_ATTRIBUTE_NAME;
@@ -127,7 +129,7 @@ public class XOAuthAuthenticationManagerTest {
         SecurityContextHolder.clearContext();
         header = map(
             entry("alg", "HS256"),
-            entry("kid", "testKey"),
+            entry("kid", "correctKey"),
             entry("typ", "JWT")
         );
     }
@@ -424,6 +426,51 @@ public class XOAuthAuthenticationManagerTest {
 
         mockToken();
         mockUaaServer.expect(requestTo("http://oidc10.identity.cf-app.com/token_key"))
+            .andExpect(header("Authorization", "Basic " + new String(Base64.encodeBase64("identity:identitysecret".getBytes()))))
+            .andExpect(header("Accept", "application/json"))
+            .andRespond(withStatus(OK).contentType(APPLICATION_JSON).body(response));
+
+        mockToken();
+
+        UaaUser existingShadowUser = new UaaUser(new UaaUserPrototype()
+            .withUsername("marissa")
+            .withPassword("")
+            .withEmail("marissa_old@bloggs.com")
+            .withGivenName("Marissa_Old")
+            .withFamilyName("Bloggs_Old")
+            .withId("user-id")
+            .withOrigin("the_origin")
+            .withZoneId("uaa")
+            .withAuthorities(UaaAuthority.USER_AUTHORITIES));
+
+        userDatabase.addUser(existingShadowUser);
+
+        xoAuthAuthenticationManager.authenticate(xCodeToken);
+    }
+
+    @Test
+    public void loginAndValidateSignatureUsingTokenKeysEndpoint() throws Exception {
+        config.setTokenKeyUrl(new URL("http://oidc10.identity.cf-app.com/token_keys"));
+        config.setTokenKey(null);
+
+        KeyInfo key1 = new KeyInfo();
+        key1.setKeyId("someKey");
+        key1.setSigningKey("-----BEGIN RSA PRIVATE KEY-----\n" + "MIIBOQIBAAJBAIL/mSGp2XH8/XVUZAxmGFQrCk9FmdOPJ3h4l8HntrbHKGETeJIT\n" + "0WHOkpj1k8YSznc+N/lLJLgoymi7gJRAVMECAwEAAQJAAeMMoZ+AslOikv4UMtmF\n" + "oDC+hUXLYXC+cM3L4c8kop1WeBMFooRA88G4iJ3YO6d8a4ZoVtxQw2V25HMZoAeF\n" + "wQIhAM1sC68O/Z1pZ4Ssi/ZXKPqKr/cRJBvEEBWlznN0jjtzAiEAo0CO6rjP1q3q\n" + "OtlTsI1cym31V1e0J2ePaE9nEJ03CfsCIHlFifhFH1Bow6Y9vzsk5ZpTeeKgCfMi\n" + "YmSFSEY8zyMlAiBBSK/ebcmvsBzbK82r7NwOl6plI02H9IIE1LwCiNxZwQIgVE6s\n" + "YJWiZ0Guv88Dqlib+g/KbHKgzbQYll3g4nDgPHY=\n" + "-----END RSA PRIVATE KEY-----");
+
+        KeyInfo key2 = new KeyInfo();
+        key2.setKeyId("correctKey");
+        key2.setSigningKey(rsaSigningKey);
+
+        KeyInfo key3 = new KeyInfo();
+        key3.setKeyId("anotherKey");
+        key3.setSigningKey("-----BEGIN RSA PRIVATE KEY-----\n" + "MIIBOAIBAAJAW7Al9RsHeORtgId//SmROYjT8pPcXzJOF/zEyXm/g43KV6LAmLAk\n" + "94edk4g0m+5saqm8Z43R4NhUFR2JdQ3SxwIDAQABAkAeuKPPP7I+QJOsODqbUf02\n" + "APG7Wu3A+/MMuIYbV+7ing1W5KmoNa2P1rcFn5Dj1vzBfbY0RirpxEQLb1uHiiox\n" + "AiEArUPljp7ysSyhpt9sZtQi2lUbWn80oKBss9Ze8J7eRx8CIQCHeC9kNjTnXWb8\n" + "QrEdWpVpcEMoBn3swtlaplhkFcLHWQIgANc5f+2pg86RojunTQBugtyy20eOu9DL\n" + "djvuDgDXV0UCIE+FJxyGDUv6sedGJr16XNZFxcYK+YQvZHMnzh8B/xIRAiAs7QGX\n" + "lGY5w9ZNImJ0UTazSxV2ybQsgbTh7gFpt4iSVQ==\n" + "-----END RSA PRIVATE KEY-----");
+
+        VerificationKeysListResponse verificationKeysResponse = new VerificationKeysListResponse();
+        verificationKeysResponse.setKeys(Stream.of(key1, key2, key3).map(TokenKeyEndpoint::getVerificationKeyResponse).collect(Collectors.toList()));
+        String response = JsonUtils.writeValueAsString(verificationKeysResponse);
+
+        mockToken();
+        mockUaaServer.expect(requestTo("http://oidc10.identity.cf-app.com/token_keys"))
                 .andExpect(header("Authorization", "Basic " + new String(Base64.encodeBase64("identity:identitysecret".getBytes()))))
                 .andExpect(header("Accept", "application/json"))
                 .andRespond(withStatus(OK).contentType(APPLICATION_JSON).body(response));

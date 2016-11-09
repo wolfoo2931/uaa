@@ -15,6 +15,7 @@ package org.cloudfoundry.identity.uaa.util;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.cloudfoundry.identity.uaa.oauth.CommonSignatureVerifier;
 import org.cloudfoundry.identity.uaa.oauth.TokenRevokedException;
 import org.cloudfoundry.identity.uaa.oauth.jwt.Jwt;
 import org.cloudfoundry.identity.uaa.oauth.jwt.JwtHelper;
@@ -134,6 +135,33 @@ public class TokenValidation {
             logger.debug("Invalid token (could not verify signature)", ex);
             addError("Could not verify token signature.", new InvalidSignatureException(token));
         }
+        return this;
+    }
+
+    public TokenValidation checkSignature(String key) {
+        if(!decoded) { return this; }
+
+        if(key == null) {
+            addError("No key data was included that could be used to validate the token.");
+        }
+        SignatureVerifier verifier = new CommonSignatureVerifier(key);
+        return checkSignature(verifier);
+    }
+
+    public TokenValidation checkSignature(Map<String, String> keys) {
+        if(keys == null || !decoded) { return this; }
+        if (keys.size() == 1) {
+            return checkSignature(keys.values().iterator().next());
+        }
+
+        String kid = tokenJwt.getHeader().getKid();
+
+        if (keys.containsKey(kid)) {
+            String keyValue = keys.get(kid);
+            return checkSignature(keyValue);
+        }
+
+        addError("No keys were available to validate the token.", new InvalidSignatureException(token));
         return this;
     }
 

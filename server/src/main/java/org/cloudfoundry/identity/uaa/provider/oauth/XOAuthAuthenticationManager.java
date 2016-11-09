@@ -40,7 +40,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
@@ -56,7 +55,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -300,12 +301,18 @@ public class XOAuthAuthenticationManager extends ExternalLoginAuthenticationMana
 
         String tokenKey = config.getTokenKey();
         URL tokenKeyUrl = config.getTokenKeyUrl();
-        if(!StringUtils.hasText(tokenKey) && tokenKeyUrl != null && StringUtils.hasText(tokenKeyUrl.toString())) {
-            tokenKey = getTokenKeyFromOAuth(config, tokenKeyUrl.toString());
+
+        Map<String, String> keys;
+        if(StringUtils.hasText(tokenKey)) {
+            keys = Collections.singletonMap("", tokenKey);
+        } else if(tokenKeyUrl != null && StringUtils.hasText(tokenKeyUrl.toString())) {
+            keys = getTokenKeysFromOAuth(config, tokenKeyUrl.toString());
+        } else {
+            keys = null;
         }
 
         TokenValidation validation = validate(idToken)
-            .checkSignature(new CommonSignatureVerifier(tokenKey))
+            .checkSignature(keys)
             .checkIssuer((StringUtils.isEmpty(config.getIssuer()) ? config.getTokenUrl().toString() : config.getIssuer()))
             .checkAudience(config.getRelyingPartyId())
             .checkExpiry()
@@ -315,17 +322,26 @@ public class XOAuthAuthenticationManager extends ExternalLoginAuthenticationMana
         return JsonUtils.readValue(decodeIdToken.getClaims(), new TypeReference<Map<String, Object>>(){});
     }
 
-    private String getTokenKeyFromOAuth(AbstractXOAuthIdentityProviderDefinition config, String tokenKeyUrl) {
+    private Map<String, String> getTokenKeysFromOAuth(AbstractXOAuthIdentityProviderDefinition config, String tokenKeyUrl) {
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add("Authorization", getClientAuthHeader(config));
         headers.add("Accept", "application/json");
         HttpEntity tokenKeyRequest = new HttpEntity<>(null, headers);
         ResponseEntity<Map<String, Object>> responseEntity = getRestTemplate(config).exchange(tokenKeyUrl, HttpMethod.GET, tokenKeyRequest, new ParameterizedTypeReference<Map<String, Object>>() {});
-        String key = (String) responseEntity.getBody().get("value");
-        if (key == null) {
-            throw new InvalidTokenException("The external OAuth server returned no token key");
+
+        Map<String, String> keys = new HashMap<>();
+
+        ArrayList<Map<String, Object>> multipleKeys = (ArrayList<Map<String, Object>>) responseEntity.getBody().get("keys");
+        if(multipleKeys != null) {
+            for (Map<String, Object> key : multipleKeys) {
+                keys.put((String) key.get("kid"), (String) key.get("value"));
+            }
+        } else {
+            String singleKey = (String) responseEntity.getBody().get("value");
+            keys.put("", singleKey);
         }
-        return key;
+
+        return keys;
     }
 
     private String getTokenFromCode(XOAuthCodeToken codeToken, AbstractXOAuthIdentityProviderDefinition config) {
