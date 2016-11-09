@@ -249,7 +249,6 @@ public class XOAuthAuthenticationManagerTest {
         assertEquals(OriginKeys.UAA, uaaUser.getZoneId());
     }
 
-
     @Test(expected = AccountNotPreCreatedException.class)
     public void doesNotCreateShadowUserAndFailsAuthentication_IfAddShadowUserOnLoginIsFalse() throws Exception {
         config.setAddShadowUserOnLogin(false);
@@ -290,6 +289,22 @@ public class XOAuthAuthenticationManagerTest {
                 .andExpect(header("Authorization", "Basic " + new String(Base64.encodeBase64("identity:identitysecret".getBytes()))))
                 .andExpect(header("Accept", "application/json"))
                 .andRespond(withStatus(OK).contentType(APPLICATION_JSON).body(response));
+
+        xoAuthAuthenticationManager.authenticate(xCodeToken);
+    }
+
+    @Test(expected = InvalidTokenException.class)
+    public void rejectAuthentication_whenTokenKeysCantBeRetrieved() throws Exception {
+        addTheUserOnAuth();
+        mockToken();
+
+        config.setTokenKey(null);
+        config.setTokenKeyUrl(new URL("http://oidc10.identity.cf-app.com/token_key"));
+
+        mockUaaServer.expect(requestTo("http://oidc10.identity.cf-app.com/token_key"))
+            .andExpect(header("Authorization", "Basic " + new String(Base64.encodeBase64("identity:identitysecret".getBytes()))))
+            .andExpect(header("Accept", "application/json"))
+            .andRespond(withStatus(OK).contentType(APPLICATION_JSON).body("{}"));
 
         xoAuthAuthenticationManager.authenticate(xCodeToken);
     }

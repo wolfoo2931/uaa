@@ -40,6 +40,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
@@ -320,7 +321,11 @@ public class XOAuthAuthenticationManager extends ExternalLoginAuthenticationMana
         headers.add("Accept", "application/json");
         HttpEntity tokenKeyRequest = new HttpEntity<>(null, headers);
         ResponseEntity<Map<String, Object>> responseEntity = getRestTemplate(config).exchange(tokenKeyUrl, HttpMethod.GET, tokenKeyRequest, new ParameterizedTypeReference<Map<String, Object>>() {});
-        return (String) responseEntity.getBody().get("value");
+        String key = (String) responseEntity.getBody().get("value");
+        if (key == null) {
+            throw new InvalidTokenException("The external OAuth server returned no token key");
+        }
+        return key;
     }
 
     private String getTokenFromCode(XOAuthCodeToken codeToken, AbstractXOAuthIdentityProviderDefinition config) {
