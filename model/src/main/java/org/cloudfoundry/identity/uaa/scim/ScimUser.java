@@ -21,6 +21,7 @@ import org.cloudfoundry.identity.uaa.approval.Approval;
 import org.cloudfoundry.identity.uaa.impl.JsonDateSerializer;
 import org.cloudfoundry.identity.uaa.scim.impl.ScimUserJsonDeserializer;
 import org.springframework.util.Assert;
+import org.springframework.util.MultiValueMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,6 +45,15 @@ import static org.springframework.util.StringUtils.hasText;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonDeserialize(using = ScimUserJsonDeserializer.class)
 public class ScimUser extends ScimCore<ScimUser> {
+
+    public MultiValueMap<String, String> getUserAttributes() {
+        return userAttributes;
+    }
+
+    public ScimUser setUserAttributes(MultiValueMap<String, String> userAttributes) {
+        this.userAttributes = userAttributes;
+        return this;
+    }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static final class Group {
@@ -337,6 +347,8 @@ public class ScimUser extends ScimCore<ScimUser> {
     private String salt = null;
 
     private Date passwordLastModified = null;
+
+    private MultiValueMap<String,String> userAttributes;
 
     @JsonProperty
     private String password;

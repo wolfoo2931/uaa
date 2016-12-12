@@ -33,6 +33,15 @@ import java.util.Objects;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SamlIdentityProviderDefinition extends ExternalIdentityProviderDefinition {
 
+    public boolean isStoreUserAttributes() {
+        return storeUserAttributes;
+    }
+
+    public SamlIdentityProviderDefinition setStoreUserAttributes(boolean storeUserAttributes) {
+        this.storeUserAttributes = storeUserAttributes;
+        return this;
+    }
+
     public enum MetadataLocation {
         URL,
         DATA,
@@ -51,6 +60,7 @@ public class SamlIdentityProviderDefinition extends ExternalIdentityProviderDefi
     private int assertionConsumerIndex;
     private boolean metadataTrustCheck;
     private boolean showSamlLink;
+    private boolean storeUserAttributes = false;
     private String linkText;
     private String iconUrl;
     private ExternalGroupMappingMode groupMappingMode = ExternalGroupMappingMode.EXPLICITLY_MAPPED;
@@ -70,6 +80,7 @@ public class SamlIdentityProviderDefinition extends ExternalIdentityProviderDefi
         def.setAssertionConsumerIndex(assertionConsumerIndex);
         def.setMetadataTrustCheck(metadataTrustCheck);
         def.setShowSamlLink(showSamlLink);
+        def.setStoreUserAttributes(storeUserAttributes);
         def.setLinkText(linkText);
         def.setIconUrl(iconUrl);
         def.setAddShadowUserOnLogin(isAddShadowUserOnLogin());
@@ -261,6 +272,7 @@ public class SamlIdentityProviderDefinition extends ExternalIdentityProviderDefi
             ", linkText='" + linkText + '\'' +
             ", iconUrl='" + iconUrl + '\'' +
             ", zoneId='" + zoneId + '\'' +
+            ", storeUserAttributes='" + storeUserAttributes + '\'' +
             ", addShadowUserOnLogin='" + isAddShadowUserOnLogin() + '\'' +
             '}';
     }

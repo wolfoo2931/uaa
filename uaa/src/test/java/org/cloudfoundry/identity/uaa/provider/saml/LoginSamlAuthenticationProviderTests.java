@@ -648,6 +648,9 @@ public class LoginSamlAuthenticationProviderTests extends JdbcTestBase {
         assertNotNull("Expected manager attribute", authentication.getUserAttributes().get(MANAGERS));
         assertEquals("Expected 2 manager attribute values", 2, authentication.getUserAttributes().get(MANAGERS).size());
         assertThat(authentication.getUserAttributes().get(MANAGERS), containsInAnyOrder(JOHN_THE_SLOTH, KARI_THE_ANT_EATER));
+
+        ScimUser authenticatedUser = userProvisioning.retrieve(authentication.getPrincipal().getId());
+        assertEquals(authentication.getUserAttributes(), authenticatedUser.getUserAttributes());
     }
 
     protected UaaAuthentication getAuthentication() {

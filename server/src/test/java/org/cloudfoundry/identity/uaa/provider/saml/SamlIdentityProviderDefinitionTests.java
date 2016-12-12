@@ -26,7 +26,8 @@ public class SamlIdentityProviderDefinitionTests {
             .setIdpEntityAlias("alias")
             .setNameID("nameID")
             .setMetadataTrustCheck(true)
-            .setShowSamlLink(false)
+            .setStoreUserAttributes(true)
+            .setShowSamlLink(true)
             .setLinkText("link test")
             .setIconUrl("url")
             .setZoneId("zoneId");
