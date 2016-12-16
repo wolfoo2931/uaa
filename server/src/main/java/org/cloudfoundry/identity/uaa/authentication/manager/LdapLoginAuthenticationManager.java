@@ -84,11 +84,11 @@ public class LdapLoginAuthenticationManager extends ExternalLoginAuthenticationM
             IdentityProvider provider = provisioning.retrieveByOrigin(getOrigin(), IdentityZoneHolder.get().getId());
             LdapIdentityProviderDefinition ldapIdentityProviderDefinition = ObjectUtils.castInstance(provider.getConfig(),LdapIdentityProviderDefinition.class);
             List<String> externalWhiteList = ldapIdentityProviderDefinition.getExternalGroupsWhitelist();
-            result = new LinkedList<>(getAuthoritesAsNames(request.getAuthorities()));
-            result.retainAll(externalWhiteList);
+            result = WhitelistMatcher.filterAuthorities(externalWhiteList, getAuthoritesAsNames(request.getAuthorities()));
         }
         return result;
     }
+
 
     protected Set<String> getAuthoritesAsNames(Collection<? extends GrantedAuthority> authorities) {
         Set<String> result = new HashSet<>();
