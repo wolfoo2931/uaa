@@ -64,12 +64,19 @@ public class UaaStringUtilsTest {
     }
 
     @Test
-    public void testHideConfigValues() throws Exception {
-        Map<String,?> result = UaaStringUtils.redactValues(map);
-        checkRedacted(result);
+    public void redactValues_hidesAllStringValues() {
+        HashMap<String, Object> map = new HashMap<>();
+        HashMap<String, Object> nestedMap = new HashMap<>();
+        nestedMap.put("innerKey", "innerValue");
+        map.put("topLevelStringKey", "stringValue");
+        map.put("topLevelObjectKey", nestedMap);
+        map.put("topLevelStringKey2", "stringValue2");
 
-        Map presult = UaaStringUtils.redactValues(new HashMap(properties));
-        checkRedacted(presult);
+        Map<String,?> result = UaaStringUtils.redactValues(map);
+
+        assertEquals("<redacted>", result.get("topLevelStringKey"));
+        assertEquals("<redacted>", result.get("topLevelStringKey2"));
+        assertEquals("<redacted>", ((Map) result.get("topLevelObjectKey")).get("innerKey"));
     }
 
     private void checkPasswords(Map<String,?> map) {
@@ -79,17 +86,6 @@ public class UaaStringUtilsTest {
                 assertEquals("#", (String)value);
             } else if (value instanceof Map) {
                 checkPasswords((Map)value);
-            }
-        }
-    }
-
-    private void checkRedacted(Map<String,?> map) {
-        for (String key : map.keySet()) {
-            Object value = map.get(key);
-            if (value instanceof Map) {
-                checkRedacted((Map)value);
-            } else  {
-                assertEquals("<redacted>", value);
             }
         }
     }
