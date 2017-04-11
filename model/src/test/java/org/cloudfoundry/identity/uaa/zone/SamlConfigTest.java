@@ -170,11 +170,8 @@ public class SamlConfigTest {
     public void read_old_json_works() throws Exception {
         read_json(oldJson);
         assertEquals(privateKey, config.getPrivateKey());
-        assertEquals(privateKey, getField("privateKey"));
         assertEquals(passphrase, config.getPrivateKeyPassword());
-        assertEquals(passphrase, getField("privateKeyPassword"));
         assertEquals(certificate, config.getCertificate());
-        assertEquals(certificate, getField("certificate"));
     }
 
     public void read_json(String json) {
@@ -186,17 +183,10 @@ public class SamlConfigTest {
         read_json(oldJson);
         String json = JsonUtils.writeValueAsString(config);
         read_json(json);
-        assertNull(getField("privateKey"));
-        assertNull(getField("privateKeyPassword"));
-        assertNull(getField("certificate"));
         assertEquals(privateKey, config.getPrivateKey());
         assertEquals(passphrase, config.getPrivateKeyPassword());
         assertEquals(certificate, config.getCertificate());
     }
 
-    public Object getField(String name) throws Exception {
-        Field field = ReflectionUtils.findField(SamlConfig.class, name);
-        field.setAccessible(true);
-        return ReflectionUtils.getField(field, config);
-    }
+
 }

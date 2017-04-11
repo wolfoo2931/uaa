@@ -35,13 +35,6 @@ public class SamlConfig {
     private boolean wantAssertionSigned = true;
     private boolean wantAuthnRequestSigned = false;
     private int assertionTimeToLiveSeconds = 600;
-    @JsonIgnore
-    private String certificate;
-    @JsonIgnore
-    private String privateKey;
-    @JsonIgnore
-    private String privateKeyPassword;
-
     private String activeKeyId;
     private Map<String, SamlKey> keys = new HashMap<>();
 
@@ -71,17 +64,34 @@ public class SamlConfig {
 
     @JsonProperty("certificate")
     public void setCertificate(String certificate) {
-        this.certificate = certificate;
+        SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
+        if (null == legacyKey) {
+            legacyKey = new SamlKey();
+        }
+        legacyKey.setCertificate(certificate);
+        keys.put(LEGACY_KEY_ID, legacyKey);
     }
 
     @JsonProperty("privateKey")
     public void setPrivateKey(String privateKey) {
-        this.privateKey = privateKey;
+        SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
+        if (null == legacyKey) {
+            legacyKey = new SamlKey();
+        }
+        legacyKey.setKey(privateKey);
+        keys.put(LEGACY_KEY_ID, legacyKey);
+
     }
 
     @JsonProperty("privateKeyPassword")
     public void setPrivateKeyPassword(String privateKeyPassword) {
-        this.privateKeyPassword = privateKeyPassword;
+        SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
+        if (null == legacyKey) {
+            legacyKey = new SamlKey();
+        }
+        legacyKey.setPassphrase(privateKeyPassword);
+        keys.put(LEGACY_KEY_ID, legacyKey);
+
     }
 
     public boolean isWantAuthnRequestSigned() {
@@ -100,47 +110,35 @@ public class SamlConfig {
         this.assertionTimeToLiveSeconds = assertionTimeToLiveSeconds;
     }
 
-    @JsonIgnore
+    @JsonProperty("certificate")
     public String getCertificate() {
-        if (hasLegacyKey()) {
-            return certificate;
-        } else {
-            SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
-            if (null != legacyKey) {
-                return legacyKey.getCertificate();
-            }
+        SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
+        if (null != legacyKey) {
+            return legacyKey.getCertificate();
         }
         return null;
     }
 
-    @JsonIgnore
+    @JsonProperty
     public String getPrivateKey() {
-        if (hasLegacyKey()) {
-            return privateKey;
-        } else {
-            SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
-            if (null != legacyKey) {
-                return legacyKey.getKey();
-            }
+        SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
+        if (null != legacyKey) {
+            return legacyKey.getKey();
         }
         return null;
     }
 
-    @JsonIgnore
+    @JsonProperty
     public String getPrivateKeyPassword() {
-        if (hasLegacyKey()) {
-            return privateKeyPassword;
-        } else {
-            SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
-            if (null != legacyKey) {
-                return legacyKey.getPassphrase();
-            }
+        SamlKey legacyKey = keys.get(LEGACY_KEY_ID);
+        if (null != legacyKey) {
+            return legacyKey.getPassphrase();
         }
         return null;
     }
 
     public String getActiveKeyId() {
-        return activeKeyId;
+        return hasText(activeKeyId) ? activeKeyId : hasLegacyKey() ? LEGACY_KEY_ID : null;
     }
 
     public void setActiveKeyId(String activeKeyId) {
@@ -148,10 +146,6 @@ public class SamlConfig {
     }
 
     public Map<String, SamlKey> getKeys() {
-        if (hasLegacyKey()) {
-            SamlKey key = new SamlKey(privateKey, privateKeyPassword, certificate);
-            keys.put(LEGACY_KEY_ID, key);
-        }
         return keys;
     }
 
@@ -172,6 +166,6 @@ public class SamlConfig {
 
     @JsonIgnore
     protected boolean hasLegacyKey() {
-        return hasText(privateKey) && hasText(certificate);
+        return keys.get(LEGACY_KEY_ID) != null;
     }
 }
