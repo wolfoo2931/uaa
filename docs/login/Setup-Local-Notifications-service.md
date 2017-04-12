@@ -1,4 +1,5 @@
-##Introduction
+# Introduction
+
 This document outlines how to setup a local notifications service.
 
 # Prerequisites
